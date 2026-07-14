@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Script Ketua Unit / Penyelia — Sesi Audit Surveyor</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header no-print">
+    <div class="header-inner">
+      <h1>Script Ketua Unit / Penyelia</h1>
+      <p class="subtitle">Semasa Surveyor Datang Melawat</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="control-panel no-print">
+      <div class="field-group">
+        <label for="kawasan-select">Kawasan</label>
+        <select id="kawasan-select">
+          <option value="">— Pilih kawasan —</option>
+          <option value="Jimnasium">Jimnasium</option>
+          <option value="Elektroterapi">Elektroterapi</option>
+          <option value="Hidroterapi">Hidroterapi</option>
+          <option value="Women's Health / Men's Health">Women's Health / Men's Health</option>
+          <option value="Neurojim">Neurojim</option>
+          <option value="Bilik 26">Bilik 26</option>
+          <option value="Bilik A (SCACC)">Bilik A (SCACC)</option>
+        </select>
+      </div>
+      <div class="control-actions">
+        <button id="btn-save" class="btn btn-primary" type="button">Simpan</button>
+        <button id="btn-print" class="btn btn-secondary" type="button">Cetak</button>
+        <button id="btn-clear" class="btn btn-ghost" type="button">Kosongkan Borang</button>
+      </div>
+      <div id="save-status" class="save-status" aria-live="polite"></div>
+    </section>
+
+    <section class="control-panel records-panel no-print">
+      <div class="records-header">
+        <h2>Rekod Tersimpan</h2>
+        <div class="records-actions">
+          <button id="btn-export" class="btn btn-ghost" type="button">Muat Turun Sandaran (JSON)</button>
+          <label class="btn btn-ghost file-label">
+            Muat Naik Sandaran
+            <input id="import-input" type="file" accept="application/json" hidden />
+          </label>
+        </div>
+      </div>
+      <ul id="records-list" class="records-list"></ul>
+    </section>
+
+    <form id="script-form">
+      <p class="intro-note no-print">Sila pilih kawasan di atas, lengkapkan ruang kosong (bergaris) di bawah, kemudian tekan <strong>Simpan</strong>. Data disimpan dalam pelayar (browser) peranti ini. Guna <strong>Cetak</strong> untuk mencetak / jadikan PDF.</p>
+
+      <article class="script-section">
+        <h2>Pembukaan</h2>
+        <p class="script-line">
+          Assalamualaikum dan selamat sejahtera. Nama saya
+          <input type="text" name="nama" class="blank blank-md" placeholder="nama penyelia" />,
+          Penyelia di kawasan
+          <input type="text" name="kawasanNama" class="blank blank-md" placeholder="kawasan" />.
+        </p>
+        <p class="script-line">
+          Ada <input type="text" name="jumlahStaf" class="blank blank-sm" placeholder="bilangan" /> orang staf di kawasan ini.
+        </p>
+        <p class="script-line">
+          Kawasan ini menerima pesakit untuk kondisi
+          <input type="text" name="kondisiPesakit" class="blank blank-lg" placeholder="jenis kondisi" />.
+        </p>
+      </article>
+
+      <article class="script-section">
+        <h2>Aset &amp; Keselamatan Fizikal</h2>
+        <p class="script-line">
+          Di sini ada <input type="text" name="jumlahAset" class="blank blank-sm" placeholder="bilangan" /> jumlah aset.
+        </p>
+        <p class="script-line">
+          Ada <input type="text" name="unitBer" class="blank blank-sm" placeholder="bilangan" /> unit untuk BER (Bio-medical Equipment Register).
+        </p>
+        <p class="script-line">
+          Pintu keselamatan berada di
+          <input type="text" name="pintuKeselamatan" class="blank blank-lg" placeholder="lokasi pintu keselamatan" />.
+        </p>
+        <p class="script-line">
+          Laluan keselamatan adalah
+          <input type="text" name="laluanKeselamatan" class="blank blank-lg" placeholder="penerangan laluan keselamatan" />.
+        </p>
+        <p class="script-line">
+          Fire extinguisher ada <input type="text" name="jumlahFireExt" class="blank blank-sm" placeholder="bilangan" /> di
+          <input type="text" name="lokasiFireExt" class="blank blank-lg" placeholder="lokasi" />.
+        </p>
+      </article>
+
+      <article class="script-section">
+        <h2>Infection Control &amp; Hand Hygiene</h2>
+        <p class="script-line">
+          Hand rub/sink terdekat berada di
+          <input type="text" name="lokasiHandRub" class="blank blank-lg" placeholder="lokasi hand rub / sink" />.
+        </p>
+      </article>
+
+      <article class="script-section">
+        <h2>Pengurusan Sisa (Waste Management)</h2>
+        <p class="script-line">
+          Clinical waste bin (yellow bag) diletakkan di
+          <input type="text" name="lokasiWasteBin" class="blank blank-lg" placeholder="lokasi clinical waste bin" />.
+        </p>
+      </article>
+
+      <article class="script-section">
+        <h2>Respons Kecemasan (Emergency Response)</h2>
+        <p class="script-line">
+          Sekiranya berlaku kecemasan pesakit (contoh: cardiac arrest / fall), protokol yang diikuti ialah
+          <input type="text" name="protokolKecemasan" class="blank blank-xl" placeholder="protokol kecemasan" />.
+        </p>
+      </article>
+
+      <article class="script-section">
+        <h2>Petunjuk Kualiti (Quality Indicator / KPI)</h2>
+        <p class="script-line">
+          KPI yang dipantau di kawasan ini termasuk
+          <input type="text" name="kpiDipantau" class="blank blank-lg" placeholder="KPI yang dipantau" />,
+          dengan pencapaian terkini
+          <input type="text" name="pencapaianTerkini" class="blank blank-md" placeholder="pencapaian terkini" />.
+        </p>
+      </article>
+
+      <article class="script-section">
+        <h2>Mekanisme Aduan/Maklum Balas</h2>
+        <p class="script-line">
+          Borang aduan/maklum balas pesakit (termasuk QR code jika ada) boleh diperoleh di
+          <input type="text" name="lokasiBorangAduan" class="blank blank-lg" placeholder="lokasi borang aduan" />.
+        </p>
+      </article>
+
+      <p class="script-note">
+        Nota: Setiap Ketua Unit/Penyelia perlu lengkapkan ruang kosong mengikut situasi kawasan masing-masing sebelum sesi audit.
+      </p>
+
+      <footer class="print-footer">
+        <p>Kawasan: <span id="print-kawasan">—</span></p>
+        <p>Disimpan pada: <span id="print-timestamp">—</span></p>
+      </footer>
+    </form>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
