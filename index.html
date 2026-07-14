@@ -18,8 +18,8 @@
     <section class="control-panel no-print">
       <div class="field-group">
         <label for="kawasan-select">Kawasan</label>
-        <select id="kawasan-select">
-          <option value="">— Pilih kawasan —</option>
+        <select id="kawasan-select" disabled>
+          <option value="">— Memuatkan data... —</option>
           <option value="Jimnasium">Jimnasium</option>
           <option value="Elektroterapi">Elektroterapi</option>
           <option value="Hidroterapi">Hidroterapi</option>
@@ -52,7 +52,7 @@
     </section>
 
     <form id="script-form">
-      <p class="intro-note no-print">Sila pilih kawasan di atas, lengkapkan ruang kosong (bergaris) di bawah, kemudian tekan <strong>Simpan</strong>. Data disimpan dalam pelayar (browser) peranti ini. Guna <strong>Cetak</strong> untuk mencetak / jadikan PDF.</p>
+      <p class="intro-note no-print">Sila pilih kawasan di atas, lengkapkan ruang kosong (bergaris) di bawah, kemudian tekan <strong>Simpan</strong>. Data disimpan pada storan awan (cloud) dan boleh dilihat oleh semua pengguna secara langsung. Guna <strong>Cetak</strong> untuk mencetak / jadikan PDF.</p>
 
       <article class="script-section">
         <h2>Pembukaan</h2>
@@ -146,6 +146,6 @@
     </form>
   </main>
 
-  <script src="script.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>

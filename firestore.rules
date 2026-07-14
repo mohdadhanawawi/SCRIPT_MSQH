@@ -1,0 +1,18 @@
+rules_version = '2';
+
+// Rules permulaan (paling ringkas): sesiapa yang ada pautan webapp boleh baca dan tulis
+// rekod kawasan. Tiada log masuk/pengesahan pengguna dalam versi ini.
+//
+// PENTING: Ini bermakna sesiapa sahaja yang tahu URL laman web (dan tahu cara buka
+// developer console) secara teknikal boleh mengubah/memadam data terus melalui Firestore,
+// bukan hanya melalui borang. Untuk kegunaan dalaman unit/jabatan biasanya cukup selamat,
+// tetapi jika perlu lebih ketat (contoh: hanya staf log masuk guna emel hospital boleh
+// tulis), maklumkan supaya boleh ditambah Firebase Authentication.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /kawasanRecords/{kawasanId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
