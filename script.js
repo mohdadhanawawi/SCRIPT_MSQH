@@ -1,5 +1,6 @@
-const COLLECTION_NAME = "kawasanRecords";
-const FIREBASE_SDK_VERSION = "10.14.1";
+import { API_URL } from "./config.js";
+
+const POLL_INTERVAL_MS = 20000;
 
 const form = document.getElementById("script-form");
 const areaSelect = document.getElementById("kawasan-select");
@@ -13,20 +14,8 @@ const importInput = document.getElementById("import-input");
 const printKawasanEl = document.getElementById("print-kawasan");
 const printTimestampEl = document.getElementById("print-timestamp");
 
-let db = null;
 let recordsCache = {};
 let firstLoadDone = false;
-
-// Populated once the Firebase SDK modules load successfully (see init()).
-let fs = {
-  collection: null,
-  doc: null,
-  setDoc: null,
-  deleteDoc: null,
-  onSnapshot: null,
-  writeBatch: null,
-  serverTimestamp: null,
-};
 
 function slugify(str) {
   return String(str)
@@ -61,7 +50,8 @@ function clearForm(keepArea) {
 
 function formatTimestamp(ts) {
   if (!ts) return "—";
-  const d = typeof ts.toDate === "function" ? ts.toDate() : new Date(ts);
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return "—";
   return d.toLocaleString("ms-MY", {
     day: "2-digit",
     month: "2-digit",
@@ -85,6 +75,52 @@ function setStatus(msg, persistent) {
     statusTimer = window.setTimeout(() => {
       saveStatus.textContent = "";
     }, 4000);
+  }
+}
+
+async function apiGet() {
+  const res = await fetch(API_URL, { method: "GET" });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || "Ralat tidak diketahui");
+  return json.records || [];
+}
+
+async function apiPost(payload) {
+  // Sent as text/plain (not application/json) on purpose: this keeps the request a
+  // CORS "simple request" so the browser skips the OPTIONS preflight that Apps Script
+  // web apps don't handle. Code.gs still JSON.parses e.postData.contents normally.
+  const res = await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || "Ralat tidak diketahui");
+  return json;
+}
+
+async function refreshRecords(silent) {
+  try {
+    const records = await apiGet();
+    recordsCache = {};
+    records.forEach((rec) => {
+      if (rec.kawasanId) recordsCache[rec.kawasanId] = rec;
+    });
+    renderRecordsList();
+    if (!firstLoadDone) {
+      firstLoadDone = true;
+      areaSelect.disabled = false;
+      areaSelect.options[0].textContent = "— Pilih kawasan —";
+    }
+  } catch (e) {
+    console.error(e);
+    if (!silent) {
+      setStatus(
+        "Gagal memuatkan data dari Google Sheet. Sila semak sambungan internet atau config.js (API_URL).",
+        !firstLoadDone
+      );
+    }
   }
 }
 
@@ -136,7 +172,9 @@ function renderRecordsList() {
     btnDelete.addEventListener("click", async () => {
       if (!confirm('Padam rekod "' + kawasanName + '"? Tindakan ini memadam data untuk semua pengguna.')) return;
       try {
-        await fs.deleteDoc(fs.doc(db, COLLECTION_NAME, kawasanId));
+        await apiPost({ action: "delete", kawasanId: kawasanId });
+        delete recordsCache[kawasanId];
+        renderRecordsList();
         setStatus('Rekod "' + kawasanName + '" dipadam.');
       } catch (e) {
         console.error(e);
@@ -177,12 +215,15 @@ btnSave.addEventListener("click", async () => {
   }
   const data = getFormData();
   data.kawasan = kawasan;
-  data.savedAt = fs.serverTimestamp();
+  data.kawasanId = slugify(kawasan);
 
   btnSave.disabled = true;
   setStatus("Menyimpan...");
   try {
-    await fs.setDoc(fs.doc(db, COLLECTION_NAME, slugify(kawasan)), data);
+    const result = await apiPost({ action: "save", data: data });
+    data.savedAt = result.savedAt;
+    recordsCache[data.kawasanId] = data;
+    renderRecordsList();
     setStatus('Data untuk "' + kawasan + '" berjaya disimpan dan boleh dilihat oleh semua pengguna.');
   } catch (e) {
     console.error(e);
@@ -210,15 +251,7 @@ btnExport.addEventListener("click", () => {
     alert("Tiada rekod untuk dimuat turun.");
     return;
   }
-  const exportable = {};
-  Object.keys(recordsCache).forEach((id) => {
-    const rec = { ...recordsCache[id] };
-    if (rec.savedAt && typeof rec.savedAt.toDate === "function") {
-      rec.savedAt = rec.savedAt.toDate().toISOString();
-    }
-    exportable[id] = rec;
-  });
-  const blob = new Blob([JSON.stringify(exportable, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(recordsCache, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   const stamp = new Date().toISOString().slice(0, 10);
@@ -237,20 +270,14 @@ importInput.addEventListener("change", () => {
   reader.onload = async () => {
     try {
       const imported = JSON.parse(String(reader.result));
-      const batch = fs.writeBatch(db);
-      Object.keys(imported).forEach((key) => {
+      const keys = Object.keys(imported);
+      for (const key of keys) {
         const rec = { ...imported[key] };
         if (!rec.kawasan) rec.kawasan = key;
-        const kawasanId = slugify(rec.kawasan);
-        if (typeof rec.savedAt === "string") {
-          // kept as ISO string on import; Firestore stores it as-is (not a native Timestamp),
-          // formatTimestamp() falls back to `new Date(ts)` so display still works.
-        } else {
-          rec.savedAt = fs.serverTimestamp();
-        }
-        batch.set(fs.doc(db, COLLECTION_NAME, kawasanId), rec);
-      });
-      await batch.commit();
+        rec.kawasanId = slugify(rec.kawasan);
+        await apiPost({ action: "save", data: rec });
+      }
+      await refreshRecords();
       setStatus("Sandaran berjaya dimuat naik dan digabungkan.");
     } catch (e) {
       console.error(e);
@@ -262,61 +289,13 @@ importInput.addEventListener("change", () => {
   reader.readAsText(file);
 });
 
-async function init() {
-  let firebaseConfig, initializeApp, getFirestore, firestoreExports;
-  try {
-    [{ firebaseConfig }, { initializeApp }, firestoreExports] = await Promise.all([
-      import("./firebase-config.js"),
-      import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`),
-      import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-firestore.js`),
-    ]);
-    getFirestore = firestoreExports.getFirestore;
-    fs.collection = firestoreExports.collection;
-    fs.doc = firestoreExports.doc;
-    fs.setDoc = firestoreExports.setDoc;
-    fs.deleteDoc = firestoreExports.deleteDoc;
-    fs.onSnapshot = firestoreExports.onSnapshot;
-    fs.writeBatch = firestoreExports.writeBatch;
-    fs.serverTimestamp = firestoreExports.serverTimestamp;
-  } catch (e) {
-    console.error(e);
-    setStatus("Gagal memuatkan sistem storan awan (Firebase). Sila semak sambungan internet — jika di rangkaian hospital, pastikan domain gstatic.com/googleapis.com tidak disekat firewall.", true);
+function init() {
+  if (String(API_URL || "").startsWith("GANTI_DENGAN")) {
+    setStatus("URL Google Apps Script belum ditetapkan (config.js). Sila lengkapkan setup terlebih dahulu — lihat README.", true);
     return;
   }
-
-  if (String(firebaseConfig.apiKey || "").startsWith("GANTI_DENGAN")) {
-    setStatus("Config Firebase belum ditetapkan (firebase-config.js). Sila lengkapkan config projek Firebase terlebih dahulu.", true);
-    return;
-  }
-
-  try {
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-  } catch (e) {
-    console.error(e);
-    setStatus("Gagal berhubung dengan storan awan. Sila semak config Firebase.", true);
-    return;
-  }
-
-  fs.onSnapshot(
-    fs.collection(db, COLLECTION_NAME),
-    (snapshot) => {
-      recordsCache = {};
-      snapshot.forEach((docSnap) => {
-        recordsCache[docSnap.id] = docSnap.data();
-      });
-      renderRecordsList();
-      if (!firstLoadDone) {
-        firstLoadDone = true;
-        areaSelect.disabled = false;
-        areaSelect.options[0].textContent = "— Pilih kawasan —";
-      }
-    },
-    (error) => {
-      console.error(error);
-      setStatus("Gagal menyambung ke pangkalan data. Sila semak sambungan internet.", true);
-    }
-  );
+  refreshRecords();
+  window.setInterval(() => refreshRecords(true), POLL_INTERVAL_MS);
 }
 
 init();
